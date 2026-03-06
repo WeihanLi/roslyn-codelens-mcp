@@ -25,7 +25,7 @@ Three GitHub Actions workflows with GitVersion for semantic versioning, Conventi
 
 `GitVersion.yml` at repo root:
 ```yaml
-workflow: ContinuousDeployment
+mode: ContinuousDeployment
 branches:
   main:
     regex: ^main$
