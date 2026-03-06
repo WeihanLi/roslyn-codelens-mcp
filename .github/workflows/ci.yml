@@ -40,6 +40,9 @@ jobs:
       - name: Restore
         run: dotnet restore
 
+      - name: Restore test fixtures
+        run: dotnet restore tests/RoslynCodeGraph.Tests/Fixtures/TestSolution/TestSolution.slnx
+
       - name: Build
         run: dotnet build --no-restore
 
