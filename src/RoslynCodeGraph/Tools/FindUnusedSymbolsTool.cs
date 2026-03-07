@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using ModelContextProtocol.Server;
 using RoslynCodeGraph.Models;
 
@@ -9,6 +10,50 @@ public static class FindUnusedSymbolsLogic
 {
     public static List<UnusedSymbolInfo> Execute(LoadedSolution loaded, SymbolResolver resolver, string? project, bool includeInternal)
     {
+        // Single pass: collect all referenced symbols across all syntax trees
+        var referencedSymbols = new HashSet<ISymbol>(SymbolEqualityComparer.Default);
+
+        foreach (var (_, compilation) in loaded.Compilations)
+        {
+            foreach (var syntaxTree in compilation.SyntaxTrees)
+            {
+                var semanticModel = compilation.GetSemanticModel(syntaxTree);
+                var root = syntaxTree.GetRoot();
+
+                foreach (var node in root.DescendantNodes())
+                {
+                    ISymbol? symbol = null;
+                    switch (node)
+                    {
+                        case IdentifierNameSyntax identifier:
+                            symbol = semanticModel.GetSymbolInfo(identifier).Symbol;
+                            break;
+                        case GenericNameSyntax genericName:
+                            symbol = semanticModel.GetSymbolInfo(genericName).Symbol;
+                            break;
+                        case ObjectCreationExpressionSyntax creation:
+                            symbol = semanticModel.GetSymbolInfo(creation).Symbol;
+                            break;
+                    }
+
+                    if (symbol == null)
+                        continue;
+
+                    referencedSymbols.Add(symbol);
+                    if (symbol.OriginalDefinition != null)
+                        referencedSymbols.Add(symbol.OriginalDefinition);
+
+                    // Also mark the containing type as referenced
+                    if (symbol.ContainingType != null)
+                    {
+                        referencedSymbols.Add(symbol.ContainingType);
+                        if (symbol.ContainingType.OriginalDefinition != null)
+                            referencedSymbols.Add(symbol.ContainingType.OriginalDefinition);
+                    }
+                }
+            }
+        }
+
         var results = new List<UnusedSymbolInfo>();
 
         foreach (var type in resolver.AllTypes)
@@ -29,8 +74,7 @@ public static class FindUnusedSymbolsLogic
                 continue;
 
             // Check if the type has any references
-            var typeRefs = FindReferencesLogic.Execute(loaded, resolver, type.ToDisplayString());
-            if (typeRefs.Count == 0)
+            if (!referencedSymbols.Contains(type))
             {
                 // Type is unused - report it and skip its members
                 var (file, line) = resolver.GetFileAndLine(type);
@@ -44,9 +88,7 @@ public static class FindUnusedSymbolsLogic
                 if (ShouldSkipMember(member, type, includeInternal))
                     continue;
 
-                var memberSymbol = $"{type.ToDisplayString()}.{member.Name}";
-                var memberRefs = FindReferencesLogic.Execute(loaded, resolver, memberSymbol);
-                if (memberRefs.Count == 0)
+                if (!referencedSymbols.Contains(member))
                 {
                     var (file, line) = resolver.GetFileAndLine(member);
                     var kind = member switch
@@ -57,6 +99,7 @@ public static class FindUnusedSymbolsLogic
                         IEventSymbol => "Event",
                         _ => member.Kind.ToString()
                     };
+                    var memberSymbol = $"{type.ToDisplayString()}.{member.Name}";
                     results.Add(new UnusedSymbolInfo(memberSymbol, kind, file, line, projectName, resolver.IsGenerated(file)));
                 }
             }
