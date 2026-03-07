@@ -84,4 +84,28 @@ public class CodeGraphBenchmarks
     {
         return FindReflectionUsageLogic.Execute(_loaded, _resolver, null);
     }
+
+    [Benchmark(Description = "find_references: IGreeter")]
+    public object FindReferences()
+    {
+        return FindReferencesLogic.Execute(_loaded, _resolver, "IGreeter");
+    }
+
+    [Benchmark(Description = "go_to_definition: Greeter")]
+    public object GoToDefinition()
+    {
+        return GoToDefinitionLogic.Execute(_resolver, "Greeter");
+    }
+
+    [Benchmark(Description = "get_diagnostics: all")]
+    public object GetDiagnostics()
+    {
+        return GetDiagnosticsLogic.Execute(_loaded, _resolver, null, null);
+    }
+
+    [Benchmark(Description = "search_symbols: Greet")]
+    public object SearchSymbols()
+    {
+        return SearchSymbolsLogic.Execute(_resolver, "Greet");
+    }
 }
