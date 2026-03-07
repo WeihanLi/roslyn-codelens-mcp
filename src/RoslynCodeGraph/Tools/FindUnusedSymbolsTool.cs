@@ -154,12 +154,11 @@ public static class FindUnusedSymbolsTool
     [McpServerTool(Name = "find_unused_symbols"),
      Description("Find potentially unused types and members (dead code detection). Checks public symbols for references across the solution.")]
     public static List<UnusedSymbolInfo> Execute(
-        LoadedSolution loaded,
-        SymbolResolver resolver,
+        SolutionManager manager,
         [Description("Optional project name filter")] string? project = null,
         [Description("Include internal symbols (default: false)")] bool includeInternal = false)
     {
-        SolutionGuard.EnsureLoaded(loaded);
-        return FindUnusedSymbolsLogic.Execute(loaded, resolver, project, includeInternal);
+        manager.EnsureLoaded();
+        return FindUnusedSymbolsLogic.Execute(manager.GetLoadedSolution(), manager.GetResolver(), project, includeInternal);
     }
 }

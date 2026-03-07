@@ -127,11 +127,10 @@ public static class FindReferencesTool
     [McpServerTool(Name = "find_references"),
      Description("Find all references to a symbol (type, method, property, field, or event) across the solution")]
     public static List<SymbolReference> Execute(
-        LoadedSolution loaded,
-        SymbolResolver resolver,
+        SolutionManager manager,
         [Description("Symbol name: simple type (MyClass), fully qualified (Namespace.MyClass), or member (MyClass.MyProperty)")] string symbol)
     {
-        SolutionGuard.EnsureLoaded(loaded);
-        return FindReferencesLogic.Execute(loaded, resolver, symbol);
+        manager.EnsureLoaded();
+        return FindReferencesLogic.Execute(manager.GetLoadedSolution(), manager.GetResolver(), symbol);
     }
 }

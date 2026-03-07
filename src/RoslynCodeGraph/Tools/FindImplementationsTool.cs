@@ -50,11 +50,10 @@ public static class FindImplementationsTool
     [McpServerTool(Name = "find_implementations"),
      Description("Find all classes/structs implementing an interface or extending a class")]
     public static List<SymbolLocation> Execute(
-        LoadedSolution loaded,
-        SymbolResolver resolver,
+        SolutionManager manager,
         [Description("Type name (simple or fully qualified)")] string symbol)
     {
-        SolutionGuard.EnsureLoaded(loaded);
-        return FindImplementationsLogic.Execute(loaded, resolver, symbol);
+        manager.EnsureLoaded();
+        return FindImplementationsLogic.Execute(manager.GetLoadedSolution(), manager.GetResolver(), symbol);
     }
 }

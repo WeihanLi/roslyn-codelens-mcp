@@ -120,11 +120,10 @@ public static class FindCallersTool
     [McpServerTool(Name = "find_callers"),
      Description("Find every call site for a method")]
     public static List<CallerInfo> Execute(
-        LoadedSolution loaded,
-        SymbolResolver resolver,
+        SolutionManager manager,
         [Description("Method name as Type.Method (simple or fully qualified)")] string symbol)
     {
-        SolutionGuard.EnsureLoaded(loaded);
-        return FindCallersLogic.Execute(loaded, resolver, symbol);
+        manager.EnsureLoaded();
+        return FindCallersLogic.Execute(manager.GetLoadedSolution(), manager.GetResolver(), symbol);
     }
 }
