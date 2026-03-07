@@ -11,6 +11,10 @@ A Roslyn-based MCP server that provides semantic code intelligence for .NET code
 - **get_project_dependencies** — Get the project reference graph
 - **get_symbol_context** — One-shot context dump for any type
 - **find_reflection_usage** — Detect dynamic/reflection-based usage
+- **find_references** — Find all references to any symbol (types, methods, properties, fields, events)
+- **go_to_definition** — Find the source file and line where a symbol is defined
+- **get_diagnostics** — List compiler errors and warnings across the solution
+- **search_symbols** — Fuzzy workspace symbol search by name
 
 ## Installation
 

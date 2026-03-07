@@ -189,6 +189,40 @@ public class SymbolResolver
         return _projectIdToName.TryGetValue(projectId, out var name) ? name : "";
     }
 
+    public List<ISymbol> FindMembers(string symbol)
+    {
+        var results = new List<ISymbol>();
+        var parts = symbol.Split('.');
+        if (parts.Length < 2) return results;
+
+        var typeName = string.Join('.', parts[..^1]);
+        var memberName = parts[^1];
+
+        foreach (var type in FindNamedTypes(typeName))
+        {
+            results.AddRange(type.GetMembers(memberName));
+        }
+
+        return results;
+    }
+
+    public List<ISymbol> FindSymbols(string symbol)
+    {
+        // Try as type first
+        var types = FindNamedTypes(symbol);
+        if (types.Count > 0)
+            return types.Cast<ISymbol>().ToList();
+
+        // Try as Type.Member (methods, properties, fields, events)
+        var members = FindMembers(symbol);
+        if (members.Count > 0)
+            return members;
+
+        return [];
+    }
+
+    public IReadOnlyDictionary<string, List<INamedTypeSymbol>> TypesBySimpleName => _typesBySimpleName;
+
     /// <summary>
     /// Returns all types that implement the given interface, using pre-built index.
     /// </summary>
