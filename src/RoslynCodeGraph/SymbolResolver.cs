@@ -329,7 +329,7 @@ public class SymbolResolver
     {
         if (string.IsNullOrEmpty(path))
             return true;
-        return path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
-            || path.Contains($"{Path.AltDirectorySeparatorChar}obj{Path.AltDirectorySeparatorChar}");
+        return path.Contains("/obj/")
+            || path.Contains("\\obj\\");
     }
 }

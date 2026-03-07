@@ -155,10 +155,8 @@ public class FileChangeTracker : IDisposable
 
     private void OnFileChangedPath(string fullPath)
     {
-        if (fullPath.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
-            || fullPath.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
-            || fullPath.Contains($"{Path.AltDirectorySeparatorChar}obj{Path.AltDirectorySeparatorChar}")
-            || fullPath.Contains($"{Path.AltDirectorySeparatorChar}bin{Path.AltDirectorySeparatorChar}"))
+        if (fullPath.Contains("/obj/") || fullPath.Contains("\\obj\\")
+            || fullPath.Contains("/bin/") || fullPath.Contains("\\bin\\"))
             return;
 
         lock (_lock)
