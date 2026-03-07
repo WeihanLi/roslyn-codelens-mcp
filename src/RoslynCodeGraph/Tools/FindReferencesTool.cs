@@ -68,7 +68,7 @@ public static class FindReferencesLogic
                         continue;
 
                     var snippet = GetContainingStatement(node);
-                    results.Add(new SymbolReference(kind, file, line, snippet, projectName));
+                    results.Add(new SymbolReference(kind, file, line, snippet, projectName, resolver.IsGenerated(file)));
                 }
             }
         }

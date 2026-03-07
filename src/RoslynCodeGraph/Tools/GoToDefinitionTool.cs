@@ -44,7 +44,7 @@ public static class GoToDefinitionLogic
             };
 
             var project = resolver.GetProjectName(s);
-            results.Add(new SymbolLocation(kind, fullName, file, line, project));
+            results.Add(new SymbolLocation(kind, fullName, file, line, project, resolver.IsGenerated(file)));
         }
 
         return results;

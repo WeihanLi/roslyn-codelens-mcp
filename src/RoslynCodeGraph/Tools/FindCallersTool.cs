@@ -46,7 +46,7 @@ public static class FindCallersLogic
                     var callerName = GetCallerName(invocation);
                     var snippet = invocation.ToString();
 
-                    results.Add(new CallerInfo(callerName, file, line, snippet, projectName));
+                    results.Add(new CallerInfo(callerName, file, line, snippet, projectName, resolver.IsGenerated(file)));
                 }
             }
         }

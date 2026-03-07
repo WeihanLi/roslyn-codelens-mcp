@@ -36,7 +36,7 @@ public static class FindImplementationsLogic
                     TypeKind.Interface => "interface",
                     _ => "class"
                 };
-                results.Add(new SymbolLocation(kind, fullName, file, line, project));
+                results.Add(new SymbolLocation(kind, fullName, file, line, project, resolver.IsGenerated(file)));
             }
         }
 

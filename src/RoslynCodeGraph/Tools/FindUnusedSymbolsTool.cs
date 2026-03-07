@@ -34,7 +34,7 @@ public static class FindUnusedSymbolsLogic
             {
                 // Type is unused - report it and skip its members
                 var (file, line) = resolver.GetFileAndLine(type);
-                results.Add(new UnusedSymbolInfo(type.ToDisplayString(), type.TypeKind.ToString(), file, line, projectName));
+                results.Add(new UnusedSymbolInfo(type.ToDisplayString(), type.TypeKind.ToString(), file, line, projectName, resolver.IsGenerated(file)));
                 continue;
             }
 
@@ -57,7 +57,7 @@ public static class FindUnusedSymbolsLogic
                         IEventSymbol => "Event",
                         _ => member.Kind.ToString()
                     };
-                    results.Add(new UnusedSymbolInfo(memberSymbol, kind, file, line, projectName));
+                    results.Add(new UnusedSymbolInfo(memberSymbol, kind, file, line, projectName, resolver.IsGenerated(file)));
                 }
             }
         }

@@ -67,7 +67,7 @@ public static class FindReflectionUsageLogic
                     if (symbol != null && !snippet.Contains(symbol) && !target.Contains(symbol))
                         continue;
 
-                    results.Add(new ReflectionUsage(kind, target, file, line, snippet));
+                    results.Add(new ReflectionUsage(kind, target, file, line, snippet, resolver.IsGenerated(file)));
                 }
             }
         }
