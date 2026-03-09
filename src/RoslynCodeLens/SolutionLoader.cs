@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.MSBuild;
 
@@ -5,7 +6,7 @@ namespace RoslynCodeLens;
 
 public class SolutionLoader
 {
-    public async Task<LoadedSolution> LoadAsync(string solutionPath)
+    public async Task<(Solution Solution, MSBuildWorkspace Workspace)> OpenAsync(string solutionPath)
     {
         var workspace = MSBuildWorkspace.Create();
 
@@ -17,21 +18,41 @@ public class SolutionLoader
         await Console.Error.WriteLineAsync($"[roslyn-codelens] Loading solution: {Path.GetFileName(solutionPath)}").ConfigureAwait(false);
         var solution = await workspace.OpenSolutionAsync(solutionPath).ConfigureAwait(false);
 
-        var compilations = new Dictionary<ProjectId, Compilation>();
-        var projects = solution.Projects.ToList();
+        return (solution, workspace);
+    }
 
-        for (var i = 0; i < projects.Count; i++)
+    public async Task<ConcurrentDictionary<ProjectId, Compilation>> CompileAllParallelAsync(Solution solution)
+    {
+        var compilations = new ConcurrentDictionary<ProjectId, Compilation>();
+        var levels = GetCompilationLevels(solution);
+        var totalProjects = levels.Sum(l => l.Count);
+        var compiled = 0;
+
+        foreach (var level in levels)
         {
-            var project = projects[i];
-            await Console.Error.WriteLineAsync(
-                $"[roslyn-codelens] Compiling project {i + 1}/{projects.Count}: {project.Name}").ConfigureAwait(false);
-
-            var compilation = await project.GetCompilationAsync().ConfigureAwait(false);
-            if (compilation != null)
+            var tasks = level.Select(async project =>
             {
-                compilations[project.Id] = compilation;
-            }
+                var index = Interlocked.Increment(ref compiled);
+                await Console.Error.WriteLineAsync(
+                    $"[roslyn-codelens] Compiling project {index}/{totalProjects}: {project.Name}").ConfigureAwait(false);
+
+                var compilation = await project.GetCompilationAsync().ConfigureAwait(false);
+                if (compilation != null)
+                {
+                    compilations[project.Id] = compilation;
+                }
+            });
+
+            await Task.WhenAll(tasks).ConfigureAwait(false);
         }
+
+        return compilations;
+    }
+
+    public async Task<LoadedSolution> LoadAsync(string solutionPath)
+    {
+        var (solution, _) = await OpenAsync(solutionPath).ConfigureAwait(false);
+        var compilations = await CompileAllParallelAsync(solution).ConfigureAwait(false);
 
         await Console.Error.WriteLineAsync(
             $"[roslyn-codelens] Ready. {compilations.Count} projects compiled.").ConfigureAwait(false);

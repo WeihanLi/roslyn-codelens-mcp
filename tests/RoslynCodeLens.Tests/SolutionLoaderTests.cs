@@ -17,4 +17,33 @@ public class SolutionLoaderTests
         Assert.NotNull(result.Solution);
         Assert.True(result.Compilations.Count >= 2);
     }
+
+    [Fact]
+    public async Task OpenAsync_ReturnsSolutionWithoutCompilations()
+    {
+        var fixturePath = Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "Fixtures", "TestSolution", "TestSolution.slnx");
+        fixturePath = Path.GetFullPath(fixturePath);
+
+        var loader = new SolutionLoader();
+        var (solution, workspace) = await loader.OpenAsync(fixturePath);
+
+        Assert.NotNull(solution);
+        Assert.True(solution.Projects.Count() >= 2);
+    }
+
+    [Fact]
+    public async Task CompileAllParallelAsync_CompilesAllProjects()
+    {
+        var fixturePath = Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "Fixtures", "TestSolution", "TestSolution.slnx");
+        fixturePath = Path.GetFullPath(fixturePath);
+
+        var loader = new SolutionLoader();
+        var (solution, workspace) = await loader.OpenAsync(fixturePath);
+        var compilations = await loader.CompileAllParallelAsync(solution);
+
+        Assert.True(compilations.Count >= 2);
+        Assert.All(compilations.Values, c => Assert.NotNull(c));
+    }
 }

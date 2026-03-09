@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.MSBuild;
 
@@ -101,7 +102,7 @@ public sealed class SolutionManager : IDisposable
             Console.Error.WriteLine($"[roslyn-codelens] Warning: {e.Diagnostic.Message}");
 
         var solution = await workspace.OpenSolutionAsync(_solutionPath!).ConfigureAwait(false);
-        var compilations = new Dictionary<ProjectId, Compilation>(_loaded.Compilations);
+        var compilations = new ConcurrentDictionary<ProjectId, Compilation>(_loaded.Compilations);
 
         foreach (var project in solution.Projects)
         {

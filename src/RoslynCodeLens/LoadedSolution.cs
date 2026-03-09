@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.CodeAnalysis;
 
 namespace RoslynCodeLens;
@@ -5,8 +6,8 @@ namespace RoslynCodeLens;
 public class LoadedSolution
 {
     public required Solution Solution { get; init; }
-    public required IDictionary<ProjectId, Compilation> Compilations { get; init; }
-    public bool IsEmpty => Compilations.Count == 0;
+    public required ConcurrentDictionary<ProjectId, Compilation> Compilations { get; init; }
+    public bool IsEmpty => Compilations.IsEmpty;
 
     public static LoadedSolution Empty { get; } = CreateEmpty();
 
@@ -16,7 +17,7 @@ public class LoadedSolution
         return new LoadedSolution
         {
             Solution = workspace.CurrentSolution,
-            Compilations = new Dictionary<ProjectId, Compilation>()
+            Compilations = new ConcurrentDictionary<ProjectId, Compilation>()
         };
     }
 }
