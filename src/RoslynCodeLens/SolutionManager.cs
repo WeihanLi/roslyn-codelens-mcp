@@ -13,6 +13,7 @@ public sealed class SolutionManager : IDisposable
     private readonly Lock _lock = new();
     private volatile bool _rebuilding;
     private Task? _warmupTask;
+    private Exception? _warmupException;
 
     private SolutionManager(LoadedSolution loaded, string? solutionPath)
     {
@@ -60,17 +61,19 @@ public sealed class SolutionManager : IDisposable
             {
                 _loaded = newLoaded;
                 _resolver = newResolver;
-            }
 
-            if (_solutionPath != null)
-            {
-                _tracker = new FileChangeTracker(newLoaded, _solutionPath);
+                if (_solutionPath != null)
+                {
+                    _tracker = new FileChangeTracker(newLoaded, _solutionPath);
+                }
             }
 
             await Console.Error.WriteLineAsync($"[roslyn-codelens] Background compilation complete. {compilations.Count} project(s) compiled.").ConfigureAwait(false);
+            _warmupTask = null;
         }
         catch (Exception ex)
         {
+            _warmupException = ex;
             await Console.Error.WriteLineAsync($"[roslyn-codelens] Background compilation failed: {ex}").ConfigureAwait(false);
         }
     }
@@ -83,6 +86,8 @@ public sealed class SolutionManager : IDisposable
     public LoadedSolution GetLoadedSolution()
     {
         _warmupTask?.GetAwaiter().GetResult();
+        if (_warmupException != null)
+            throw new InvalidOperationException("Solution warmup failed.", _warmupException);
         RebuildIfStale();
         return _loaded;
     }
@@ -90,6 +95,8 @@ public sealed class SolutionManager : IDisposable
     public SymbolResolver GetResolver()
     {
         _warmupTask?.GetAwaiter().GetResult();
+        if (_warmupException != null)
+            throw new InvalidOperationException("Solution warmup failed.", _warmupException);
         RebuildIfStale();
         return _resolver;
     }
@@ -97,6 +104,8 @@ public sealed class SolutionManager : IDisposable
     public void EnsureLoaded()
     {
         _warmupTask?.GetAwaiter().GetResult();
+        if (_warmupException != null)
+            throw new InvalidOperationException("Solution warmup failed.", _warmupException);
         if (_loaded.IsEmpty)
             throw new InvalidOperationException(
                 "No .sln file found. Either run from a directory containing a .sln/.slnx file, " +
