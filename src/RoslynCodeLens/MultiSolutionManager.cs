@@ -6,6 +6,7 @@ public sealed class MultiSolutionManager : IDisposable
 {
     private readonly Dictionary<string, SolutionManager> _managers;
     private string? _activeKey;
+    private readonly Lock _lock = new();
 
     private MultiSolutionManager(Dictionary<string, SolutionManager> managers, string? activeKey)
     {
@@ -33,10 +34,20 @@ public sealed class MultiSolutionManager : IDisposable
     public static MultiSolutionManager CreateEmpty() =>
         new([], null);
 
-    private SolutionManager Active =>
-        _activeKey != null && _managers.TryGetValue(_activeKey, out var m)
-            ? m
-            : SolutionManager.CreateEmpty();
+    private SolutionManager Active
+    {
+        get
+        {
+            string? key;
+            lock (_lock) { key = _activeKey; }
+            if (key == null || !_managers.TryGetValue(key, out var m))
+                throw new InvalidOperationException(
+                    key == null
+                        ? "No solution loaded. Pass a .sln/.slnx path as argument."
+                        : $"Active solution key '{key}' not found in loaded solutions.");
+            return m;
+        }
+    }
 
     public void EnsureLoaded() => Active.EnsureLoaded();
     public LoadedSolution GetLoadedSolution() => Active.GetLoadedSolution();
@@ -46,6 +57,9 @@ public sealed class MultiSolutionManager : IDisposable
 
     public IReadOnlyList<SolutionInfo> ListSolutions()
     {
+        string? activeKey;
+        lock (_lock) { activeKey = _activeKey; }
+
         return _managers
             .Select(kvp =>
             {
@@ -58,11 +72,15 @@ public sealed class MultiSolutionManager : IDisposable
                     projectCount = loaded.Compilations.Count;
                     status = loaded.IsEmpty ? "empty" : "ready";
                 }
+                catch (InvalidOperationException ex) when (ex.Message.Contains("warmup failed", StringComparison.OrdinalIgnoreCase))
+                {
+                    status = "error";
+                }
                 catch
                 {
                     status = "loading";
                 }
-                return new SolutionInfo(kvp.Key, kvp.Key == _activeKey, projectCount, status);
+                return new SolutionInfo(kvp.Key, kvp.Key == activeKey, projectCount, status);
             })
             .ToList();
     }
@@ -81,8 +99,8 @@ public sealed class MultiSolutionManager : IDisposable
             throw new InvalidOperationException(
                 $"Ambiguous match for '{name}'. Matches: {string.Join(", ", matches)}");
 
-        _activeKey = matches[0];
-        return _activeKey;
+        lock (_lock) { _activeKey = matches[0]; }
+        return matches[0];
     }
 
     public void Dispose()
