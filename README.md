@@ -133,6 +133,13 @@ All type lookups use pre-built reverse inheritance maps, member indexes, and att
 | `find_unused_symbols` | 1.1 ms | 212 KB |
 | `find_naming_violations` | 5.0 ms | 670 KB |
 | Solution loading (one-time) | ~928 ms | 8 MB |
+| `analyze_data_flow` | — | — |
+| `analyze_control_flow` | — | — |
+| `analyze_change_impact` | — | — |
+| `get_type_overview` | — | — |
+| `analyze_method` | — | — |
+| `get_file_overview` | — | — |
+| `get_code_actions` | — | — |
 
 ## Hot Reload
 
