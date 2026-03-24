@@ -1,14 +1,15 @@
+using System.Collections.Concurrent;
 using RoslynCodeLens.Models;
 
 namespace RoslynCodeLens;
 
 public sealed class MultiSolutionManager : IDisposable
 {
-    private readonly Dictionary<string, SolutionManager> _managers;
+    private readonly ConcurrentDictionary<string, SolutionManager> _managers;
     private string? _activeKey;
     private readonly Lock _lock = new();
 
-    private MultiSolutionManager(Dictionary<string, SolutionManager> managers, string? activeKey)
+    private MultiSolutionManager(ConcurrentDictionary<string, SolutionManager> managers, string? activeKey)
     {
         _managers = managers;
         _activeKey = activeKey;
@@ -19,7 +20,7 @@ public sealed class MultiSolutionManager : IDisposable
         if (solutionPaths.Count == 0)
             return CreateEmpty();
 
-        var managers = new Dictionary<string, SolutionManager>(StringComparer.OrdinalIgnoreCase);
+        var managers = new ConcurrentDictionary<string, SolutionManager>(StringComparer.OrdinalIgnoreCase);
         foreach (var path in solutionPaths)
         {
             var normalised = Path.GetFullPath(path);
@@ -32,7 +33,7 @@ public sealed class MultiSolutionManager : IDisposable
     }
 
     public static MultiSolutionManager CreateEmpty() =>
-        new([], null);
+        new(new ConcurrentDictionary<string, SolutionManager>(StringComparer.OrdinalIgnoreCase), null);
 
     private SolutionManager Active
     {
@@ -102,6 +103,86 @@ public sealed class MultiSolutionManager : IDisposable
 
         lock (_lock) { _activeKey = matches[0]; }
         return matches[0];
+    }
+
+    /// <summary>
+    /// Load a new solution at runtime. If it's already loaded, just activates it.
+    /// Returns the normalised path of the loaded solution.
+    /// </summary>
+    public async Task<string> LoadSolutionAsync(string solutionPath)
+    {
+        var normalised = Path.GetFullPath(solutionPath);
+
+        lock (_lock)
+        {
+            if (_managers.ContainsKey(normalised))
+            {
+                _activeKey = normalised;
+                return normalised;
+            }
+        }
+
+        var manager = await SolutionManager.CreateAsync(normalised).ConfigureAwait(false);
+
+        lock (_lock)
+        {
+            // Double-check: another concurrent call may have loaded this solution while we were creating the manager.
+            if (_managers.ContainsKey(normalised))
+            {
+                manager.Dispose();
+            }
+            else
+            {
+                _managers[normalised] = manager;
+            }
+            _activeKey = normalised;
+        }
+
+        return normalised;
+    }
+
+    /// <summary>
+    /// Unload a solution by partial name match, freeing its memory.
+    /// If the unloaded solution is currently active, another loaded solution (if any)
+    /// will become active; otherwise there will be no active solution.
+    /// </summary>
+    public string UnloadSolution(string name)
+    {
+        SolutionManager? managerToDispose = null;
+        string key;
+
+        lock (_lock)
+        {
+            var keysSnapshot = _managers.Keys.ToList();
+
+            var matches = keysSnapshot
+                .Where(k => k.Contains(name, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            if (matches.Count == 0)
+                throw new InvalidOperationException(
+                    $"No solution matching '{name}'. Available: {string.Join(", ", keysSnapshot.Select(Path.GetFileName))}");
+
+            if (matches.Count > 1)
+                throw new InvalidOperationException(
+                    $"Ambiguous match for '{name}'. Matches: {string.Join(", ", matches)}");
+
+            key = matches[0];
+
+            if (string.Equals(_activeKey, key, StringComparison.OrdinalIgnoreCase))
+            {
+                var remaining = keysSnapshot
+                    .Where(k => !string.Equals(k, key, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                _activeKey = remaining.Count > 0 ? remaining[0] : null;
+            }
+
+            if (_managers.TryRemove(key, out var manager))
+                managerToDispose = manager;
+        }
+
+        managerToDispose?.Dispose();
+        return key;
     }
 
     public void Dispose()
