@@ -72,6 +72,20 @@ public class MultiSolutionManagerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ListSolutions_TwoLoaded_OnlyActiveIsMarked()
+    {
+        var multi = await MultiSolutionManager.CreateAsync([_solutionPath, _altSolutionPath]);
+        multi.SetActiveSolution("TestSolutionAlt");
+
+        var list = multi.ListSolutions();
+
+        Assert.Equal(2, list.Count);
+        Assert.Single(list, s => s.IsActive);
+        Assert.Contains(list, s => s.IsActive && s.Path.Contains("TestSolutionAlt", StringComparison.OrdinalIgnoreCase));
+        multi.Dispose();
+    }
+
+    [Fact]
     public async Task SetActiveSolution_ByPartialName_SwitchesActive()
     {
         var multi = await MultiSolutionManager.CreateAsync([_solutionPath]);
@@ -89,6 +103,16 @@ public class MultiSolutionManagerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SetActiveSolution_AmbiguousName_Throws()
+    {
+        var multi = await MultiSolutionManager.CreateAsync([_solutionPath, _altSolutionPath]);
+
+        var ex = Assert.Throws<InvalidOperationException>(() => multi.SetActiveSolution("TestSolution"));
+        Assert.Contains("Ambiguous", ex.Message, StringComparison.OrdinalIgnoreCase);
+        multi.Dispose();
+    }
+
+    [Fact]
     public async Task ForceReloadAsync_ReturnsPositiveProjectCount()
     {
         var multi = await MultiSolutionManager.CreateAsync([_solutionPath]);
@@ -100,6 +124,19 @@ public class MultiSolutionManagerTests : IAsyncLifetime
     }
 
     // --- LoadSolutionAsync tests ---
+
+    [Fact]
+    public async Task LoadSolutionAsync_NewSolution_BecomesActive()
+    {
+        var multi = await MultiSolutionManager.CreateAsync([_solutionPath]);
+
+        await multi.LoadSolutionAsync(_altSolutionPath);
+
+        var list = multi.ListSolutions();
+        Assert.Equal(2, list.Count);
+        Assert.Contains(list, s => s.IsActive && s.Path.Contains("TestSolutionAlt", StringComparison.OrdinalIgnoreCase));
+        multi.Dispose();
+    }
 
     [Fact]
     public async Task LoadSolutionAsync_FromEmpty_LoadsAndActivates()
@@ -172,6 +209,21 @@ public class MultiSolutionManagerTests : IAsyncLifetime
         multi.UnloadSolution("TestSolution");
         var list = multi.ListSolutions();
         Assert.Empty(list);
+        multi.Dispose();
+    }
+
+    [Fact]
+    public async Task UnloadSolution_ActiveOfTwo_SwitchesToOther()
+    {
+        var multi = await MultiSolutionManager.CreateAsync([_solutionPath, _altSolutionPath]);
+        multi.SetActiveSolution("TestSolutionAlt");
+
+        multi.UnloadSolution("TestSolutionAlt");
+
+        var list = multi.ListSolutions();
+        Assert.Single(list);
+        Assert.True(list[0].IsActive);
+        Assert.Contains("TestSolution", list[0].Path, StringComparison.OrdinalIgnoreCase);
         multi.Dispose();
     }
 
