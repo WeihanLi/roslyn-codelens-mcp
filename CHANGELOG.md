@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2](https://github.com/MarcelRoozekrans/roslyn-codelens-mcp/compare/v1.1.1...v1.1.2) (2026-03-28)
+
+
+### Bug Fixes
+
+* add mcp-name to README for MCP registry ownership verification ([679c4e6](https://github.com/MarcelRoozekrans/roslyn-codelens-mcp/commit/679c4e69f5911af5c5ce547acb4c9a3eebccf38e))
+* add mcp-name to README for MCP registry ownership verification ([cb4acdc](https://github.com/MarcelRoozekrans/roslyn-codelens-mcp/commit/cb4acdcf296d3f1a0c433e9e7583092c1ede372d))
+
 ## [1.1.1](https://github.com/MarcelRoozekrans/roslyn-codelens-mcp/compare/v1.1.0...v1.1.1) (2026-03-28)
 
 
